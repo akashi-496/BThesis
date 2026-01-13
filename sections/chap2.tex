@@ -45,7 +45,7 @@
 
 この階層構造に基づくデータを収集するため，図\ref{fig:exp_setup}に示す実験環境を構築した．本環境では，実際のラリー中における選手の身体動作（モーションキャプチャで計測）と筋活動（表面筋電図で計測），およびその結果としての打球の正確性（着弾位置計測）の同期計測を行う．ここで得られたデータを用い，以下の段階的なプロセスで解析を進める．
 
-第一段階として，最上位の打球精度と直下のラケット終端姿勢の関係性を解析する．具体的には，ラケット挙動を表現する10個の変数を入力とし，打球精度を分類または回帰する機械学習モデル（k-近傍法，サポートベクターマシン，ランダムフォレスト）を構築する．構築したモデルに対して Permutation Feature Importance（PFI）を適用することで，ラケットの挙動において精度の良し悪しを決定づける重要な変数を特定する．
+第一段階として，最上位の打球精度と直下のラケット終端姿勢の関係性を解析する．具体的には，ラケット挙動を表現する10個の変数を入力とし，打球精度を分類する機械学習モデル（k-近傍法，サポートベクターマシン，ランダムフォレスト）を構築する．構築したモデルに対して Permutation Feature Importance（PFI）を適用することで，ラケットの挙動において精度の良し悪しを決定づける重要な変数を特定する．
 
 第二段階として，特定された重要なラケット変数を目的変数とし，その下層にある関節運動との関係性を解析する．ここでは，関節角度の時系列データを扱うために LSTM（Long Short Term Memory）や，各関節の特徴量を用いた回帰分析等を行い，ラケットの重要変数を生成するために支配的な関節運動を明らかにする．
 
@@ -93,16 +93,71 @@
   \item \textbf{インパクト位置誤差 ($Diff_{Long}, Diff_{Short}$)}：ラケット局所座標系における，ラケット重心から見たボール接触点のズレ．長軸方向の距離を $Diff_{Long}$，短軸方向の距離を $Diff_{Short}$ と定義する．これにより，重心近くで捉えられたかを評価する．
 \end{enumerate}
 
+
+
 \subsection{関節運動変数の定義}
 \label{subsec:joint_vars}
 ラケットの終端姿勢を生成する身体的要因として，上肢および体幹の関節角度を定義した．
-本研究では，車椅子卓球における打球動作への寄与が大きい以下の関節運動に着目する．
+本研究では，車椅子卓球における打球動作への寄与が大きい以下の関節運動に着目する（図\ref{fig:def_shoulder_x}-\ref{fig:def_thorax_rot}）．
 
 \begin{itemize}
  \item \textbf{肘関節}：屈曲・伸展および回旋の2自由度．
  \item \textbf{肩関節 (Shoulder)}：屈曲・伸展，外転・内転，内旋・外旋の3自由度．
  \item \textbf{体幹 (Trunk)}：胸郭と骨盤の間の相対角度として算出される，屈曲・伸展，側屈，回旋の3自由度．
 \end{itemize}
+
+% --- 上肢（肩・肘）の変数定義 ---
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/shoulder_X.png}
+  \caption{肩関節の伸展・屈曲角度の定義 ($Shoulder\_X$)}
+  \label{fig:def_shoulder_x}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/shoulder_Y.png}
+  \caption{肩関節の外転・内転角度の定義 ($Shoulder\_Y$)}
+  \label{fig:def_shoulder_y}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/shoulder_Z.png}
+  \caption{肩関節の外旋・内旋角度の定義 ($Shoulder\_Z$)}
+  \label{fig:def_shoulder_z}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/elbow.png}
+  \caption{肘関節の屈曲・伸展，回旋角度の定義 ($Elbow$)}
+  \label{fig:def_elbow}
+\end{figure}
+
+% --- 体幹（胸郭-骨盤）の変数定義 ---
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/thorax_extension_flexion.png}
+  \caption{胸郭・骨盤間の屈曲・伸展（前傾・後傾）角度の定義 ($Thorax\_Ext/Flex$)}
+  \label{fig:def_thorax_ext_flex}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/thorax_lateral_flexion.png}
+  \caption{胸郭・骨盤間の側屈角度の定義 ($Thorax\_Lat\_Flex$)}
+  \label{fig:def_thorax_lat_flex}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/thorax_rotation.png}
+  \caption{胸郭・骨盤間の回旋角度の定義 ($Thorax\_Rotation$)}
+  \label{fig:def_thorax_rot}
+\end{figure}
 
 \subsection{画像解析による計測とデータ算出}
 \label{subsec:measurement_process}
@@ -185,10 +240,14 @@ D_i = \sqrt{(x_{\mathrm{land}}^{i} - x_{\mathrm{target}})^2 + (y_{\mathrm{land}}
 \label{subsec:ml_analysis}
 算出されたデータを用い，以下の手順で階層的に要因を特定する．
 
-\subsubsection{ラケット終端姿勢の重要変数特定}
-打球精度（$D$）を直接決定づけるラケット変数を特定するため，機械学習モデルを用いた回帰分析を行う．
-入力には2.3節で定義した10個のラケット変数を，出力には打球誤差 $D$ を用い，k-近傍法（KNN），サポートベクターマシン（SVM），ランダムフォレスト等のアルゴリズムによりモデルを構築する．
-学習済みモデルに対して Permutation Feature Importance (PFI) を適用し，予測精度への寄与度が大きい変数を重要変数として抽出する．
+\subsubsection{ラケット終端姿勢の重要変数特定（Step 1）}
+打球精度（$D$）を直接決定づけるラケット変数を特定するため，機械学習モデルを用いた分類分析を行う．
+
+まず，全60試行を着弾誤差距離 $D$ の昇順（精度の良い順）に並べ替え，上位20試行を「高精度クラス（Success）」，下位20試行を「低精度クラス（Failure）」と定義した．
+なお，中間となる20試行は，クラス間の特徴差を明確にするため解析対象から除外した．
+
+構築したデータセットに対し，入力には定義した10個のラケット変数を，出力には上記の2クラス（高精度/低精度）を用い，k-近傍法（KNN），サポートベクターマシン（SVM），ランダムフォレスト（RF）のアルゴリズムにより分類モデルを構築する．
+学習済みモデルに対して Permutation Feature Importance (PFI) を適用し，クラスの識別に寄与度が大きい変数を「重要変数」として抽出する．
 
 \subsubsection{関節運動および筋活動の解析}
 Step 1で特定された重要なラケット変数を生成する要因として，関節運動の解析を行う．
@@ -204,9 +263,11 @@ Step 1で特定された重要なラケット変数を生成する要因とし�
 
 \subsection{実験参加者}
 \label{subsec:exp_person}
-本研究の実験参加者は，パラリンピック車椅子卓球競技クラス4に所属する男子選手1名（年齢：26歳，利き手：右）とした．
-この選手は2026年1月8日時点で同クラスの世界ランキング1位である．
-参加者は二分脊椎（第3腰髄レベル：L3）に起因する機能障害を有しており，座位バランスはある程度保持されるものの，下肢による身体固定や重心移動に制限がある．
+本研究の実験参加者は，国際卓球連盟（ITTF）のパラ卓球クラス分けにおいて「クラス4」に認定されているパラリンピック車椅子卓球男子選手1名（年齢：26歳，利き手：右）を対象とした．
+この選手は2026年1月8日時点で同クラスの世界ランキング1位の選手である．
+ここで，車椅子卓球のクラス（Class 1-5）は障害の程度に応じて区分され，数字が小さいほど障害が重度であることを示す．
+クラス4は，一般に座位バランスは概ね保持されているものの，脊髄損傷やポリオなどの影響により，体幹の回旋動作や側屈動作に制限が見られる選手が該当する．
+参加者は二分脊椎（第3腰髄レベル：L3）に起因する機能障害を有しており，上肢の機能は健常者と同様であるが，下肢の麻痺に加えて下部体幹の安定性に課題を抱えている．
 なお，本実験は東京大学倫理審査委員会の承認（承認番号：E2025ALS171）を得て実施された．
 
 \subsection{計測環境とシステム構成}

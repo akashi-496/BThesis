@@ -4,77 +4,179 @@
 
 \begin{document}
 
-\chapter{検証実験}
-\label{cp:verification_experiment}
+\chapter{実験結果および考察}
+\label{cp:results_discussion}
 \thispagestyle{empty}
 \minitoc
 \newpage
 
 \section{はじめに}
-\label{sec:vexp_introduction}
+\label{sec:result_introduction}
+
+本章では，前章で提案した手法に基づき実施した実験の結果および考察について述べる．
+
+\refsec{sec:result_shotmap}では，計測された打点位置のショットマップを示し，打球精度の傾向および解析用データセットの構築について述べる．
+
+\refsec{sec:result_racket}では，機械学習モデルおよびPFIを用いた解析により，打球精度を決定づけるラケットの終端姿勢要因について述べる．
+
+\refsec{sec:result_joint}では，特定されたラケット挙動を生成する要因としての関節運動の解析結果について述べる．
+
+\refsec{sec:result_muscle}では，動作の駆動源である筋活動の時系列パターンおよび打球成否との関連について述べる．
+
+\refsec{sec:general_discussion}では，得られた解析結果を統合し，対象選手のパフォーマンスを支える運動制御メカニズムについて総合的な考察を述べる．
+
+最後に\refsec{sec:vexp_conclusion}では，本章のまとめを述べる．
+
 
 \clearpage
 
-\section{身体動作および打球品質の解析}
-\label{sec:result_exp2}
+\section{打球精度の空間分布とデータセットの構築}
+\label{sec:result_shotmap}
 
-\subsection{骨格推定によるフォームの定量化}
-\label{subsec:result_exp2_pose}
-% 内容：成功時と失敗時のフォームの違い
-% （例：インパクト時の体幹の前傾角度、肩のラインの崩れなど）
+本実験において計測された全試行におけるボールの打点位置を3次元空間にプロットした結果を図\ref{fig:shotmap}に示す．
+図中の各プロットの色は\ref{subsec:accuracy_def}節で定義したターゲットからの誤差距離 $D$ に対応しており，寒色系であるほどターゲットに近く高精度，暖色系であるほどターゲットから逸脱しており低精度であることを示す．
 
-\subsection{物体検出によるショットマップと着弾分布}
-\label{subsec:result_exp2_shotmap}
-% 内容：ボールの着弾点の可視化（ヒートマップや散布図）
-% IN群は集弾性が高いが、OUT群はばらつきが大きい、などの事実
-本実験において計測された前試行におけるボールの着弾位置を卓球台平面上にプロットした結果を図\ref{fig:shotmap}に示す．図中の各プロットの色は\ref{subsec:shotaccuracy}節で定義したターゲットからの誤差距離$D_{err}$に対応している．また黒色の×印は打球がOUTになった時を示している．
-図\ref{fig:shotmap}より，被験者の打球の多くはターゲット周辺に集団しており，実験課題であるクロス方向への内訳が遂行されていることが確認できる．
-一方で，ターゲットから大きく逸脱した試行（暖色系のプロット）も散見され，打球ごとに精度のばらつきが生じていることがわかる．
-特に，着弾点がネットぎわやサイドライン外側に大きく外れるケースでは，打球前の身体ポジションやスイング動作に何かエラーが生じている可能性が示唆される．次節以降では，これらの着弾誤差を教師データとして，その要因を身体動作および筋活動の両面から解析した結果について述べる．
+図\ref{fig:shotmap}より，被験者の打球の多くは寒色系で示される高精度な領域に分布しており，実験課題であるクロス方向への打ち分けが概ね遂行されていることが確認できる．
+一方で，一部に暖色系で示される精度が低い試行も散見され，打球ごとに精度のばらつきが生じていることがわかる．
+本章以降の解析では，このショットマップに示された各試行のデータを用い，なぜ特定の試行において精度が高く，または低くなったのか，その要因を力学的および身体的側面から解析する．
 
 \begin{figure}[h]
     \centering
     \includegraphics[keepaspectratio, width=1.0\linewidth]{chap3/shotmap.png}
-    \caption{打球位置の散布図　色：その打球の着弾点と目標との距離}
+    \caption{打点位置のショットマップ（色は着弾誤差 $D$ を表す）}
     \label{fig:shotmap}
-  \end{figure}
-
-
-
-\subsection{考察：身体動作の変容とパフォーマンスの関係}
-\label{subsec:discussion_exp2}
-% 内容：
-% ・フォームの崩れが物理的にどうボール軌道に影響したか
-% ・着弾点のばらつきから見える、プレーの安定性について
+\end{figure}
 
 \clearpage
 
-\section{筋活動に基づく打球成否要因の解析}
-\label{sec:result_exp1}
+\section{ラケット挙動による精度決定要因の特定}
+\label{sec:result_racket}
+本節では，打球精度を物理的に決定づける直接的な要因である打球時のラケット終端姿勢について解析した結果を述べる．
 
-\subsection{打球成否の識別精度と有効時間窓}
-\label{subsec:result_exp1_accuracy}
+\subsection{機械学習モデルによる予測精度の検証}
+\label{subsec:ml_accuracy}
+3つの機械学習アルゴリズムを用いて，打球精度の高低（上位/下位20試行ずつ）を分類するモデルを構築した．各モデルの識別精度を表\ref{tab:ml_score}に示す．
+結果として，全てのモデルにおいてチャンスレベル（50.0％）を上回る精度が得られた．特にk-近傍法（KNN）においては72.5％と最も高い識別精度を示し，ラケットの終端姿勢変数には打球の成否を決定づける情報が十分に内包されていることが確認された．
 
-\subsection{PFIによる重要筋の特定と時系列パターン}
-\label{subsec:result_exp1_muscle}
+\begin{table}[h]
+  \centering
+  \caption{ラケット変数による打球精度クラス（高精度/低精度）の識別精度}
+  \label{tab:ml_score}
+  \begin{tabular}{lc}
+    \hline
+    アルゴリズム & 識別精度 (\%) \\
+    \hline
+    \textbf{k-Nearest Neighbors (KNN)} & \textbf{72.50} \\
+    Random Forest (RF) & 64.75 \\
+    Support Vector Machine (SVM) & 65.00 \\
+    \hline
+    Chance Level & 50.00 \\
+    \hline
+  \end{tabular}
+\end{table}
 
-\subsection{考察：準備段階における筋活動の役割}
-\label{subsec:discussion_exp1}
+\subsection{PFIによる重要変数の抽出}
+\label{subsec:pfi_result}
+
+構築した各モデルに対して Permutation Feature Importance (PFI) を適用し，打球精度の識別に寄与する変数の重要度を算出した．
+図\ref{fig:pfi_knn}に，最も識別精度の高かったKNNモデルにおける各変数の重要度（上位10変数）を示す．
+
+図\ref{fig:pfi_knn}より，多くの変数が寄与している中で，特に上位3つの変数が高いスコアを示していることが確認できる．
+また，アルゴリズムの異なる他の2モデル（SVMおよびRandom Forest）においても同様の解析を行った結果，4位以下の変数の順位には変動が見られたものの，上位3変数については順位の入れ替わりこそあれど，一貫して以下の3つの変数が抽出された．
+
+\begin{enumerate}
+    \item \textbf{打球位置誤差（長軸方向） ($\mathrm{Diff}_{\mathrm{Long}}$)}
+    \item \textbf{ラケット面角度（被せ角） ($\mathrm{Face}_{\mathrm{Vert}}$)}
+    \item \textbf{打ち出し角（横方向） ($\mathrm{Launch\_Ang}_{\mathrm{Horz}}$)}
+\end{enumerate}
+
+以上の結果より，これら3変数は機械学習アルゴリズムの特性に依存せず，本被験者の打球精度を決定づける支配的かつ普遍的な要因であると判断できる．
+したがって，本研究ではこれら3変数を重要変数として特定し，次項において打球精度との具体的な関係性を詳細に解析する．
+
+\begin{figure}[h]
+    \centering
+    % ここに「KNNの重要度上位10個」の棒グラフ画像を貼ってください
+    \includegraphics[keepaspectratio, width=0.8\linewidth]{chap3/pfi_score_knn_top10.png}
+    \caption{KNNモデルにおける重要変数（PFIスコア）の上位10項目}
+    \label{fig:pfi_knn}
+\end{figure}
+
+\subsection{重要変数の詳細解析と考察}
+\label{subsec:variable_detail}
+
+\subsubsection{ラケット面角度 ($\mathrm{Face}_{\mathrm{Vert}}$) の影響}
+ラケット面の垂直角度（被せ角）と打球誤差 $D$ の関係を図\ref{fig:face_vert_analysis}に示す．
+グラフより，特定の角度範囲において誤差が最小化される傾向が見られた．
+具体的には，ラケット面を薄く捉える場合に精度が向上する傾向にあり，逆に過度に被せすぎた場合には精度が悪化することが確認された．
+これは，車椅子卓球特有の低い打点において，ネットミスを防ぎつつ台に収めるための最適な角度が存在することを示唆している．
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[keepaspectratio, width=0.8\linewidth]{chap3/face_vert_analysis.png}
+  \caption{ラケット面の垂直角度（被せ角）と着弾点の目標からの誤差の関係}
+  \label{fig:face_vert_analysis}
+\end{figure}
+
+\subsubsection{水平打ち出し角 ($\mathrm{Launch\_Ang}_{\mathrm{Horz}}$) の適正範囲}
+水平方向の打ち出し角度と打球誤差の関係を図\ref{fig:launch_ang_analysis}に示す．
+近似曲線を用いた分析の結果，打ち出し角が約60度付近の時に誤差が最も小さく，80度付近まで広がると精度が低下する傾向が確認された．
+一般にクロス方向への打球は角度をつけるほど難易度が上がるが，本被験者においては60度という特定の角度を維持することが，安定したパフォーマンスを発揮するための戦略となっていると考えられる．
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[keepaspectratio, width=0.8\linewidth]{chap3/launch_ang_analysis.png}
+  \caption{水平方向の打ち出し角度と着弾点の目標からの誤差の関係}
+  \label{fig:launch_ang_analysis}
+\end{figure}
+
+\subsubsection{打球位置 ($\mathrm{Diff}_{\mathrm{Long}}$) と精度の関係}
+ラケット長軸方向の打球位置（$\mathrm{Diff}_{\mathrm{Long}}$）と打球誤差の関係を図\ref{fig:diff_long_analysis}に示す．
+結果として，手元（グリップ寄り）で打球するよりも，ラケットの先端（遠位）付近で打球した試行の方が，有意に精度が高いという傾向が得られた．
+回帰直線の傾きからも，先端側への打点の偏位が精度の向上と相関していることが読み取れる．これは，先端での打球の方が角速度によるヘッドスピードを活用でき，かつ回転をかけやすいため軌道が安定した可能性が考えられる．
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[keepaspectratio, width=0.8\linewidth]{chap3/diff_long_analysis.png}
+  \caption{ラケット長軸方向の打球位置誤差と着弾点の目標からの誤差の関係}
+  \label{fig:diff_long_analysis}
+\end{figure}
 
 \clearpage
 
-% 3.3節：総合考察（★ここが卒論の要）
-    % 2つの実験を「個別最適化」というテーマで統合します
-\section{動作解析と筋活動解析の統合的理解}
+\section{関節運動によるラケット操作の生成メカニズム (Step 2)}
+\label{sec:result_joint}
+% 今後記述：前節で特定された「先端での打撃」「60度の打ち出し」等を生成するために，
+% どの関節（肘，肩，体幹）がどう動いていたかを記述する．
+% LSTMや回帰分析の結果など．
+
+\clearpage
+
+\section{打球動作を支える筋活動パターン (Step 3)}
+\label{sec:result_muscle}
+% 今後記述：上記の関節運動を駆動する筋活動について記述する．
+
+\clearpage
+
+\section{総合考察}
 \label{sec:general_discussion}
-% 内容：
-% ・実験1（筋活動の遅れ）が、実験2（フォームの崩れ・着弾ミス）にどう繋がったか？
-%   （例：「腹斜筋の活動開始が遅れたことで、インパクト時の体幹固定が間に合わず、結果としてフォームが崩れてOUTになった」という因果関係の推察）
-% ・本手法を用いることで、選手個人にどのような具体的な指導（個別最適化）が可能になるか？
+% 最後に全体をまとめる
+
 \clearpage
 
 \section{おわりに}
 \label{sec:vexp_conclusion}
+
+本章では，前章で提案した手法に基づき実施した実験の結果，および決定論的モデルに基づく段階的な要因解析の結果について述べた．
+
+\refsec{sec:result_shotmap}では，打点位置の空間分布を示し，対象選手の打球精度の傾向を確認するとともに，機械学習による分類に用いるデータセットの定義について述べた．
+
+\refsec{sec:result_racket}では，機械学習モデルおよびPFIを用いた解析により，打球精度を直接決定づけるラケットの終端姿勢要因（打球位置誤差，面角度，打ち出し角）を特定し，その物理的意味について詳述した．
+
+\refsec{sec:result_joint}および\refsec{sec:result_muscle}では，特定されたラケット挙動を生成する要因としての関節運動と，動作の駆動源である筋活動の時系列パターンについて解析結果を述べた．
+
+\refsec{sec:general_discussion}では，各階層の解析結果を統合し，対象選手がいかにして身体機能の制約を代償し，高精度な打球を実現しているかという運動制御メカニズムについて総合的な考察を行った．
+
+次章では，本論文全体の結論を述べるとともに，本研究の成果が実際の車椅子卓球の指導現場やスポーツバイオメカニクス研究に与える示唆，および今後の展望について述べる．
 
 \clearpage
 
