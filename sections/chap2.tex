@@ -47,11 +47,11 @@
 
 第一段階として，最上位の打球精度と直下のラケット終端姿勢の関係性を解析する．具体的には，ラケット挙動を表現する10個の変数を入力とし，打球精度を分類する機械学習モデル（k-近傍法，サポートベクターマシン，ランダムフォレスト）を構築する．構築したモデルに対して Permutation Feature Importance（PFI）を適用することで，ラケットの挙動において精度の良し悪しを決定づける重要な変数を特定する．
 
-第二段階として，特定された重要なラケット変数を目的変数とし，その下層にある関節運動との関係性を解析する．ここでは，関節角度の時系列データを扱うために LSTM（Long Short Term Memory）や，各関節の特徴量を用いた回帰分析等を行い，ラケットの重要変数を生成するために支配的な関節運動を明らかにする．
+第二段階として，特定された重要なラケット変数を目的変数とし，その下層にある関節運動との関係性を解析する．ここでは，関節角度の時系列データを扱うために各関節の特徴量を用いた回帰分析を行い，ラケットの重要変数を生成するために支配的な関節運動を明らかにする．
 
 最終段階として，特定された関節運動と最下層の筋活動との関連を調査する．ここでは定性的な評価を含め，主要な動作局面における筋活動レベル（平均振幅等）を確認し，動作の駆動源としての筋の役割を考察する．
 
-以上により，本研究では決定論的モデルに基づく論理的な因果関係の枠組みの中で，結果から原因へと階層を掘り下げることで，パフォーマンスに直結する身体的要因を客観的かつ説明可能な形で特定する．
+以上により，本研究では決定論的モデルに基づく論理的な因果関係の枠組みの中で，結果から原因へと階層を掘り下げることで，パフォーマンスに直結する身体的要因を特定する．
 \begin{figure}[t]
   \centering
   \includegraphics[keepaspectratio, width=0.8\linewidth]{chap2/exp_setup.png}
@@ -80,25 +80,30 @@
 \end{figure}
 
 
-\subsection{ラケット終端姿勢変数の定義}
+\subsection{ラケット姿勢変数の定義}
 \label{subsec:racket_vars}
-打球精度を直接決定づける要因であるラケットの終端姿勢を定量的かつ多角的に評価するため，以下の10個の変数を定義した．
+打球精度を直接決定づける要因であるラケットの終端姿勢を定量的かつ多角的に評価するため，以下の10個の変数を定義した（図\ref{fig:racketPos}）．
 これらは全てボールがラケットに接触した瞬間の値を用いる．
 
 \begin{enumerate}\item
   \textbf{ラケット位置 ($Pos_X, Pos_Y, Pos_Z$)}：世界座標系におけるラケット重心の3次元座標．
   \item \textbf{ラケット移動速度 ($Vel_{scalar}$)}：インパクト直前におけるラケット重心の移動速度の大きさ（スカラー量）．
-  \item \textbf{打ち出し角 ($Launch\_Ang_{Vert}, Launch\_Ang_{Horz}$)}：打球後のボール軌道の初期ベクトルがなす角度．水平面に対する角度を縦打ち出し角，進行方向に対する左右の角度を横打ち出し角とする．
-  \item \textbf{ラケット面角度 ($Face_{Vert}, Face_{Horz}$)}：ラケット面の法線ベクトルがなす角度．垂直方向の傾きを被せ角（$Face_{Vert}$），水平方向の向きを面の左右角（$Face_{Horz}$）とする．
-  \item \textbf{インパクト位置誤差 ($Diff_{Long}, Diff_{Short}$)}：ラケット局所座標系における，ラケット重心から見たボール接触点のズレ．長軸方向の距離を $Diff_{Long}$，短軸方向の距離を $Diff_{Short}$ と定義する．これにより，重心近くで捉えられたかを評価する．
+  \item \textbf{打ち出し角 ($Launch\_Ang_{Vert}, Launch\_Ang_{Horz}$)}：打球後のラケットの打ち出し方向とラケット面がなす角度．水平面に対する角度を縦打ち出し角，進行方向に対する左右の角度を横打ち出し角とする．
+  \item \textbf{ラケット面角度 ($Face_{Vert}, Face_{Horz}$)}：ラケット面の法線ベクトルが各方向となす角度．垂直方向の傾きを被せ角（$Face_{Vert}$），水平方向の向きを面の左右角（$Face_{Horz}$）とする．
+  \item \textbf{インパクト位置誤差 ($Diff_{Long}, Diff_{Short}$)}：ラケット局所座標系における，ラケット位置から見たボール接触点のズレ．長軸方向の距離を $Diff_{Long}$，短軸方向の距離を $Diff_{Short}$ と定義する．これにより，重心近くで捉えられたかを評価する．
 \end{enumerate}
 
-
+\begin{figure}[t]
+  \centering
+  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/racketPos.png}
+  \caption{ラケット姿勢変数の定義（左:垂直方向 中央:水平方向 右:ラケット局所座標）}
+  \label{fig:racketPos}
+\end{figure}
 
 \subsection{関節運動変数の定義}
 \label{subsec:joint_vars}
 ラケットの終端姿勢を生成する身体的要因として，上肢および体幹の関節角度を定義した．
-本研究では，車椅子卓球における打球動作への寄与が大きい以下の関節運動に着目する（図\ref{fig:def_shoulder_x}-\ref{fig:def_thorax_rot}）．
+本研究では，車椅子卓球における打球動作への寄与が大きい以下の関節運動に着目する（図\ref{fig:def_shoulder}）．
 
 \begin{itemize}
  \item \textbf{肘関節}：屈曲・伸展および回旋の2自由度．
@@ -110,29 +115,16 @@
 
 \begin{figure}[t]
   \centering
-  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/shoulder_X.png}
-  \caption{肩関節の伸展・屈曲角度の定義 ($Shoulder\_X$)}
-  \label{fig:def_shoulder_x}
+  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/shoulder.png}
+  \caption{肩関節の伸展・屈曲角度の定義 }
+  \label{fig:def_shoulder}
 \end{figure}
 
-\begin{figure}[t]
-  \centering
-  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/shoulder_Y.png}
-  \caption{肩関節の外転・内転角度の定義 ($Shoulder\_Y$)}
-  \label{fig:def_shoulder_y}
-\end{figure}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/shoulder_Z.png}
-  \caption{肩関節の外旋・内旋角度の定義 ($Shoulder\_Z$)}
-  \label{fig:def_shoulder_z}
-\end{figure}
 
 \begin{figure}[t]
   \centering
   \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/elbow.png}
-  \caption{肘関節の屈曲・伸展，回旋角度の定義 ($Elbow$)}
+  \caption{肘関節の屈曲・伸展，回旋角度の定義 }
   \label{fig:def_elbow}
 \end{figure}
 
@@ -140,23 +132,9 @@
 
 \begin{figure}[t]
   \centering
-  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/thorax_extension_flexion.png}
-  \caption{胸郭・骨盤間の屈曲・伸展（前傾・後傾）角度の定義 ($Thorax\_Ext/Flex$)}
-  \label{fig:def_thorax_ext_flex}
-\end{figure}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/thorax_lateral_flexion.png}
-  \caption{胸郭・骨盤間の側屈角度の定義 ($Thorax\_Lat\_Flex$)}
-  \label{fig:def_thorax_lat_flex}
-\end{figure}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/thorax_rotation.png}
-  \caption{胸郭・骨盤間の回旋角度の定義 ($Thorax\_Rotation$)}
-  \label{fig:def_thorax_rot}
+  \includegraphics[keepaspectratio, width=1.0\linewidth]{chap2/thorax.png}
+  \caption{胸郭・骨盤間の屈曲・伸展，側屈，回旋角度の定義}
+  \label{fig:def_thorax}
 \end{figure}
 
 \subsection{画像解析による計測とデータ算出}
@@ -215,7 +193,7 @@ D_i = \sqrt{(x_{\mathrm{land}}^{i} - x_{\mathrm{target}})^2 + (y_{\mathrm{land}}
 
 \clearpage
 
-\section{提案手法}
+\section{解析手法}
 \label{sec:analysis_process}
 本節では，前節で定義された変数を算出し，要因を特定するための具体的な計算処理および解析アルゴリズムについて述べる．
 
@@ -240,7 +218,7 @@ D_i = \sqrt{(x_{\mathrm{land}}^{i} - x_{\mathrm{target}})^2 + (y_{\mathrm{land}}
 \label{subsec:ml_analysis}
 算出されたデータを用い，以下の手順で階層的に要因を特定する．
 
-\subsubsection{ラケット終端姿勢の重要変数特定（Step 1）}
+\subsubsection{ラケット終端姿勢の重要変数特定}
 打球精度（$D$）を直接決定づけるラケット変数を特定するため，機械学習モデルを用いた分類分析を行う．
 
 まず，全60試行を着弾誤差距離 $D$ の昇順（精度の良い順）に並べ替え，上位20試行を「高精度クラス（Success）」，下位20試行を「低精度クラス（Failure）」と定義した．
@@ -250,8 +228,11 @@ D_i = \sqrt{(x_{\mathrm{land}}^{i} - x_{\mathrm{target}})^2 + (y_{\mathrm{land}}
 学習済みモデルに対して Permutation Feature Importance (PFI) を適用し，クラスの識別に寄与度が大きい変数を「重要変数」として抽出する．
 
 \subsubsection{関節運動および筋活動の解析}
-Step 1で特定された重要なラケット変数を生成する要因として，関節運動の解析を行う．
-関節角度は時系列データであるため，Long Short Term Memory (LSTM) などの時系列モデルや，特徴量抽出による回帰分析を用い，ラケット挙動との関連性をモデル化する．
+前項で特定された重要なラケット変数を生成する要因として，関節運動の解析を行う．
+具体的な解析手法として，本研究では動作のメカニズムを解釈可能な形で特定するため，以下の2段階の処理を行う．
+各試行の関節角度および角速度の時系列データに対し，インパクトの瞬間における特徴量を算出する．
+この特徴量を説明変数とし，ラケット挙動を目的変数とした重回帰分析を行う．
+ここでは，多数の特徴量の中から統計的に有意な影響を持つ変数のみを選抜するため，ステップワイズ変数選択法を適用し，ラケット挙動との関連性をモデル化する．
 最終的に，特定された関節運動に関与する筋群の活動レベルを定性的に評価し，動作メカニズムの考察を行う．
 
 \clearpage
@@ -263,7 +244,7 @@ Step 1で特定された重要なラケット変数を生成する要因とし�
 
 \subsection{実験参加者}
 \label{subsec:exp_person}
-本研究の実験参加者は，国際卓球連盟（ITTF）のパラ卓球クラス分けにおいて「クラス4」に認定されているパラリンピック車椅子卓球男子選手1名（年齢：26歳，利き手：右）を対象とした．
+本研究の実験参加者は，国際卓球連盟（ITTF）のパラ卓球クラス分けにおいてクラス4に認定されているパラリンピック車椅子卓球男子選手1名（年齢：26歳，利き手：右）を対象とした．
 この選手は2026年1月8日時点で同クラスの世界ランキング1位の選手である．
 ここで，車椅子卓球のクラス（Class 1-5）は障害の程度に応じて区分され，数字が小さいほど障害が重度であることを示す．
 クラス4は，一般に座位バランスは概ね保持されているものの，脊髄損傷やポリオなどの影響により，体幹の回旋動作や側屈動作に制限が見られる選手が該当する．
@@ -304,7 +285,7 @@ Step 1で特定された重要なラケット変数を生成する要因とし�
 
 \refsec{sec:approach}および\refsec{sec:variable_definition}では，決定論的モデルに基づく理論的枠組みと，解析に必要な変数および座標系の定義について述べた．
 
-\refsec{sec:analysis_process}では，具体的な解析アルゴリズムについて説明した．特に，ステレオ計測を用いた3次元復元とショットマップによる精度可視化手法，および機械学習（PFIやLSTM）を用いた打球精度の要因特定プロセスについて詳述した．
+\refsec{sec:analysis_process}では，具体的な解析アルゴリズムについて説明した．特に，ステレオ計測を用いた3次元復元とショットマップによる精度可視化手法，および機械学習（ランダムフォレストやk-近傍法，PFI）を用いた打球精度の要因特定プロセスについて詳述した．
 
 \refsec{sec:experiment}では，これらの手法を適用した実験の概要について述べた．世界ランキング1位のクラス4選手を対象とし，近位・遠位への交互打球課題において，身体運動・ボール軌道・筋活動を同期計測する実験系を構築した．
 
