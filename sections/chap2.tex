@@ -57,7 +57,7 @@
 
 \begin{figure}[t]
   \centering
-  \includegraphics[keepaspectratio, width=0.4\linewidth]{chap2/exp_setup.png}
+  \includegraphics[keepaspectratio, width=0.5\linewidth]{chap2/exp_setup.png}
   \caption{計測システムの構成}
   \label{fig:exp_setup}
 \end{figure}
@@ -99,11 +99,9 @@
 打球の正確性を評価するため，着弾点の3次元座標を卓球台平面（$xy$平面）に投影し，目標の座標との平面距離を算出した．
 試行 $i$ における着弾位置の水平座標を $(x_{\mathrm{land}}^{i}, y_{\mathrm{land}}^{i})$，目標とするターゲット位置の座標を $(x_{\mathrm{target}}, y_{\mathrm{target}})$ と定義する．
 このとき，打球の誤差距離 $D_i$ は，以下の式に示す $xy$ 平面上でのユークリッド距離として定義される．
-
 \begin{equation}
-D_i = \sqrt{(x_{\mathrm{land}}^{i} - x_{\mathrm{target}})^2 + (y_{\mathrm{land}}^{i} - y_{\mathrm{target}})^2}
+D_i = \sqrt{(x_{\mathrm{land}}^{i} - x_{\mathrm{target}})^2 + (y_{\mathrm{land}}^{i} - y_{\mathrm{target}})^2}  ，
 \end{equation}
-
 ここで，$D_i$ が $0$ に近いほど，目標に対して正確に着弾したことを意味し，値が大きいほどターゲットから逸脱した打球であることを示す．
 本解析では，この誤差距離 $D$ の値を，後述するショットマップの色付けおよび機械学習モデルの出力変数として使用する．
 
@@ -128,9 +126,9 @@ D_i = \sqrt{(x_{\mathrm{land}}^{i} - x_{\mathrm{target}})^2 + (y_{\mathrm{land}}
 \begin{enumerate}\item
   \textbf{ラケット位置 ($P_X, P_Y, P_Z$)}：世界座標系におけるラケット重心の3次元座標．
   \item \textbf{ラケット移動速度 ($|V|$)}：インパクト直前におけるラケット重心の移動速度の大きさ（スカラー量）．
-  \item \textbf{打ち出し角 ($\theta^{\rm Vert}, \theta^{\rm Horz}$)}：打球後のラケットの打ち出し方向とラケット面がなす角度．水平面に対する角度を縦打ち出し角，進行方向に対する左右の角度を横打ち出し角とする．
-  \item \textbf{ラケット面角度 ($\phi^{\rm Vert}, \phi^{\rm Horz}$)}：ラケット面の法線ベクトルが各方向となす角度．垂直方向の傾きを被せ角（$\phi^{\rm Vert}$），水平方向の向きを面の左右角（$\phi^{\rm Horz}$）とする．
-  \item \textbf{インパクト位置誤差 ($\mathrm{d}_{\mathrm{Long}}, \mathrm{d}_{\mathrm{Short}}$)}：ラケット局所座標系における，ラケット位置から見たボール接触点のズレ．長軸方向の距離を $\mathrm{d}_{\mathrm{Long}}$，短軸方向の距離を $\mathrm{d}_{\mathrm{Short}}$ と定義する．これにより，重心近くで捉えられたかを評価する．
+  \item \textbf{打ち出し角 ($\theta_{Vert}, \theta_{Horz}$)}：インパクトの瞬間におけるラケットの移動方向を表す角度．世界座標系の進行方向（$X_W$軸）を基準とし，水平面内の偏角を\textbf{水平打ち出し角（$\theta_{Horz}$）}，鉛直方向への仰角を\textbf{垂直打ち出し角（$\theta_{Vert}$）}とする
+  \item \textbf{ラケット面角度 ($\phi_{Vert}, \phi_{Horz}$)}：ラケット面の法線ベクトルが各方向となす角度．垂直方向の傾きを被せ角（$\phi_{Vert}$），水平方向の向きを面の左右角（$\phi_{Horz}$）とする．
+  \item \textbf{インパクト位置誤差 ($\mathrm{D}_{\mathrm{Long}}, \mathrm{D}_{\mathrm{Short}}$)}：ラケット局所座標系における，ラケット位置から見たボール接触点のズレ．長軸方向の距離を $\mathrm{D}_{\mathrm{Long}}$，短軸方向の距離を $\mathrm{D}_{\mathrm{Short}}$ と定義する．これにより，重心近くで捉えられたかを評価する．
 \end{enumerate}
 
 \begin{figure}[t]
@@ -204,9 +202,10 @@ D_i = \sqrt{(x_{\mathrm{land}}^{i} - x_{\mathrm{target}})^2 + (y_{\mathrm{land}}
 
 本解析における機械学習モデルの入出力構造を\ref{tab:ml_dataset}に示す．
 入力変数には，前項で定義したインパクト時のラケット位置・速度・角度などの運動学的パラメータ（計10変数）を用い，出力変数には上記の2値クラス（高精度／低精度）を用いた．
-構築したデータセットに対し，k-近傍法（k-NN）アルゴリズムを用いて分類モデルを構築した．
-学習済みモデルにおいて，どの変数が分類に大きく寄与しているかを定量化するために，Permutation Feature Importance（PFI）を適用した．
-この手法を用いることで，打球精度に影響を与えている物理的要因を抽出することが可能となる．
+構築したデータセットに対して，打球動作と精度の間の非線形関係を捉えるために，非線形分類が可能なアルゴリズムであるk—近傍法（kNN），サポートベクターマシン（SVM），およびランダムフォレスト（RF）の3手法を採用して比較検証を行った．
+本解析では，これらの手法の中で最も高い識別精度を示したモデルを選定し，要因解析のベースモデルとして使用した．
+さらに学習済みモデルにおいて，どの変数が分類に大きく寄与しているかを定量化するために，Permutation Feature Importance（PFI）を適用し，各変数につき100回のシャッフル試行を行い，その際の精度低下量の平均値を各変数の重要度として算出した．
+この手法を用いることで，打球精度に影響を与える物理的要因を抽出することが可能となる．
 
 
 \begin{table}[htbp]
@@ -228,9 +227,9 @@ D_i = \sqrt{(x_{\mathrm{land}}^{i} - x_{\mathrm{target}})^2 + (y_{\mathrm{land}}
     \midrule
     $P_X, P_Y, P_Z$ &
     $|V|$ &
-    $\theta^{\rm Vert}, \theta^{\rm Horz}$ &
-    $\phi^{\rm Vert}, \phi^{\rm Horz}$ &
-    $d_{Long}, d_{Short}$ &
+    $\theta_{Vert}, \theta_{Horz}$ &
+    $\phi_{Vert}, \phi_{Horz}$ &
+    $D_{Long}, D_{Short}$ &
     $C$ \\
     \bottomrule
   \end{tabular}
@@ -246,10 +245,15 @@ D_i = \sqrt{(x_{\mathrm{land}}^{i} - x_{\mathrm{target}})^2 + (y_{\mathrm{land}}
 ラケットの終端姿勢を生成する身体的要因として，上肢および体幹の関節角度を定義した．ただし，手首の関節に関しては計測は出来ていたものの、データの欠損により十分な試行数が確保できなくなるので、本研究においては取り扱わない．
 本研究では，車椅子卓球における打球動作への寄与が大きい以下の関節運動に着目する（図\ref{fig:def_shoulder}）．
 
+一般的な打球動作において，運動エネルギーは体幹部から末端部へと順次伝達される．
+特にフットワークや股関節による並進運動が制限される車椅子卓球選手においては，固定された骨盤上の体幹回旋が運動連鎖の始動点となり，
+肩や肘関節がそのエネルギーを増幅してラケットを加速させる役割を担う．
+したがって，手首を除くこれら体幹から肘までの関節群こそが，スイングの軌道生成とパワー発揮を決定づける主要因であると考え，以下の自由度を定義した．
+
 \begin{itemize}
  \item \textbf{肘関節}：屈曲・伸展および回旋の2自由度．
- \item \textbf{肩関節 (Shoulder)}：屈曲・伸展，外転・内転，内旋・外旋の3自由度．
- \item \textbf{体幹 (Trunk)}：胸郭と骨盤の間の相対角度として算出される，屈曲・伸展，側屈，回旋の3自由度．
+ \item \textbf{肩関節 （Shoulder）}：屈曲・伸展，外転・内転，内旋・外旋の3自由度．
+ \item \textbf{体幹 （Trunk）}：胸郭と骨盤の間の相対角度として算出される，屈曲・伸展，側屈，回旋の3自由度．
 \end{itemize}
 
 % --- 上肢（肩・肘）の変数定義 ---
@@ -291,10 +295,10 @@ D_i = \sqrt{(x_{\mathrm{land}}^{i} - x_{\mathrm{target}})^2 + (y_{\mathrm{land}}
   \item[単体動作の「大きさ・形」 (32変数)] \mbox{}\\
   フォームの空間的な広がりを評価する指標．
   \begin{itemize}
-    \item $\mathrm{\theta^{\rm Imp}}$: インパクト瞬間の角度
-    \item $\mathrm{\theta^{\rm Max}}$: スイング中の最大角度
-    \item $\mathrm{\theta^{\rm Min}}$: スイング中の最小角度
-    \item $\mathrm{\theta^{\rm ROM}}$: 可動域 ($\mathrm{\theta^{\rm Max}} - \mathrm{\theta^{\rm Min}}$)（スイングのダイナミックさ）
+    \item $\mathrm{\theta_{Imp}}$: インパクト瞬間の角度
+    \item $\mathrm{\theta_{Max}}$: スイング中の最大角度
+    \item $\mathrm{\theta_{Min}}$: スイング中の最小角度
+    \item $\mathrm{\theta_{ROM}}$: 可動域 ($\mathrm{\theta_{Max}} - \mathrm{\theta_{Min}}$)（スイングのダイナミックさ）
   \end{itemize}
 
   \item[単体動作の「速さ・強さ」 (24変数)] \mbox{}\\
@@ -308,16 +312,16 @@ D_i = \sqrt{(x_{\mathrm{land}}^{i} - x_{\mathrm{target}})^2 + (y_{\mathrm{land}}
   \item[単体動作の「時間・キレ」 (24変数)] \mbox{}\\
   筋肉のバネ特性やリズムを評価する指標．
   \begin{itemize}
-    \item $\mathrm{TimePeakPos}$: 最高速度に達した時刻
-    \item $\mathrm{TimePeakNeg}$: 最速で引ききった時刻
-    \item $\mathrm{Duration}$: 切り返しの所要時間
+    \item $\mathrm{T_{PeakPos}}$: 最高速度に達した時刻
+    \item $\mathrm{T_{PeakNeg}}$: 最速で引ききった時刻
+    \item $\mathrm{T_{Duration}}$: 切り返しの所要時間
   \end{itemize}
 
   \item[連動性・ラグ (56変数)] \mbox{}\\
   運動連鎖の適切さを評価する指標．2つの関節運動間の時間差を算出．
   \begin{itemize}
-    \item $\mathrm{LagPos}$: 各特徴量の正方向のピーク時間差
-    \item $\mathrm{LagNeg}$: 各特徴量の負方向のピーク時間差
+    \item $\mathrm{T_{LagPos}}$: 各特徴量の正方向のピーク時間差
+    \item $\mathrm{T_{LagNeg}}$: 各特徴量の負方向のピーク時間差
   \end{itemize}
 \end{description}
 
@@ -389,13 +393,13 @@ D_i = \sqrt{(x_{\mathrm{land}}^{i} - x_{\mathrm{target}})^2 + (y_{\mathrm{land}}
 
 本章では，車椅子卓球選手の打球精度を決定づける要因を解明するための実験系および解析手法について述べた．
 
-\refsec{sec:approach}では，パフォーマンス（打球精度）からラケット挙動，関節運動，筋活動へと遡る決定論的モデルに基づく解析の全体像を示した．
+\refsec{sec:approach}では，打球精度からラケット挙動，関節運動，筋活動へと遡る決定論的モデルに基づく解析の全体像を示した．
 
 \refsec{sec:variable_definition}では，ステレオ画像計測による3次元座標復元と打球誤差の定義を行い，機械学習（k-近傍法）およびPermutation Feature Importance（PFI）を用いて，打球精度に寄与するラケットの重要変数を特定するプロセスを説明した．
 
 \refsec{sec:method_step2}および\refsec{sec:analysis_EMG}では，ラケット挙動を生成する身体メカニズムにアプローチするため，136個の関節運動特徴量を用いたステップワイズ法や，筋活動の解析手順について記述した．
 
-次章では，これらの手法を用いて得られた実際の解析結果を示し，車椅子卓球選手のパフォーマンスを支える運動制御メカニズムについて考察する．
+次章では，これらの手法を用いて得られた実際の解析結果を示し，決定論的モデルに従い車椅子卓球選手の打球精度に寄与するラケット挙動，関節運動，筋活動について階層的に考察する．
 
 \clearpage
 
